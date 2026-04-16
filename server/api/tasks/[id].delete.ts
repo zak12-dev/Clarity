@@ -1,7 +1,9 @@
-import { PrismaClient } from '@prisma/client'
+import pkg from '@prisma/client'
 import { requireAuth } from "~~/server/utils/protect";
 
-const prisma = new PrismaClient()
+const { PrismaClient } = pkg
+
+import { prisma } from '~~/server/utils/prisma'
 
 export default defineEventHandler(async (event) => {
   const id = Number(getRouterParam(event, 'id'))

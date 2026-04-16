@@ -1,8 +1,10 @@
-import { PrismaClient } from '@prisma/client'
+import pkg from '@prisma/client'
+
 import { auth } from '~~/server/utils/auth'
 import type { HeadersInit } from 'undici'
+const { PrismaClient } = pkg
 
-const prisma = new PrismaClient()
+import { prisma } from '~~/server/utils/prisma'
 
 export default defineEventHandler(async (event) => {
 

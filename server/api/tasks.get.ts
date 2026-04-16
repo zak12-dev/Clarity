@@ -2,7 +2,19 @@ import { prisma } from "../utils/prisma";
 
 export default defineEventHandler(async (event) => {
   try {
+   const session = await auth.api.getSession({
+  headers: getHeaders(event) as HeadersInit
+})
+
+    const userId = session?.user?.id
+
     const tasks = await prisma.task.findMany({
+      where: {
+        OR: [
+          { createdBy: userId },
+          { assignedTo: userId },
+        ],
+      },
       include: {
         status: true,
         privilege: true,
@@ -11,6 +23,7 @@ export default defineEventHandler(async (event) => {
       },
       orderBy: { dueDate: "asc" },
     });
+
     console.log("🔄 API /api/tasks retourne", tasks.length, "tâches");
     return tasks;
   } catch (error) {
