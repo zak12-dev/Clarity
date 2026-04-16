@@ -1,76 +1,62 @@
-import type { AvatarProps } from '@nuxt/ui'
+export interface Role {
+  id:    number
+  code:  string   // "admin" | "user"
+  label: string
+}
 
-export type UserStatus = 'subscribed' | 'unsubscribed' | 'bounced'
-export type SaleStatus = 'paid' | 'failed' | 'refunded'
+export interface Status {
+  id:    number
+  code:  string
+  label: string
+  color: string | null
+  _count?: { tasks: number }
+}
+
+export interface Privilege {
+  id:    number
+  code:  string
+  label: string
+  color: string | null
+  _count?: { tasks: number }
+}
 
 export interface User {
-  id: number
-  name: string
-  email: string
-  avatar?: AvatarProps
-  status: UserStatus
-  location: string
+  id:            string     // cuid — better-auth utilise des strings
+  name:          string
+  email:         string
+  emailVerified: boolean
+  image:         string | null
+  roleId:        number | null
+  role?:         Role | null
+  createdAt:     string | Date
+  updatedAt:     string | Date
 }
-
-export interface Mail {
-  id: number
-  unread?: boolean
-  from: User
-  subject: string
-  body: string
-  date: string
-}
-
-export interface Member {
-  name: string
-  username: string
-  role: 'member' | 'owner'
-  avatar: AvatarProps
-}
-
-export interface Stat {
-  title: string
-  icon: string
-  value: number | string
-  variation: number
-  formatter?: (value: number) => string
-}
-
-export interface Sale {
-  id: string
-  date: string
-  status: SaleStatus
-  email: string
-  amount: number
-}
-
-export interface Notification {
-  id: number
-  unread?: boolean
-  sender: User
-  body: string
-  date: string
-}
-
-export type Period = 'daily' | 'weekly' | 'monthly'
-
-export interface Range {
-  start: Date
-  end: Date
-}
-
-export type TaskStatus = 'todo' | 'inprogress' | 'done'
-export type TaskPriority = 'low' | 'medium' | 'high'
 
 export interface Task {
-  id: number
-  title: string
-  description?: string
-  status: TaskStatus
-  priority: TaskPriority
-  dueDate?: string | Date
-  assignee?: {
-    name: string
-    avatar?: AvatarProps
+  id:          number
+  title:       string
+  description: string | null
+  dueDate:     string | Date | null
+  createdAt:   string | Date
+  updatedAt:   string | Date
+
+  statusId:    number
+  privilegeId: number
+  status?:     Status
+  privilege?:  Privilege
+
+  assignedTo:  string | null   // string (cuid)
+  createdBy:   string          // string (cuid)
+  assignee?:   { id: string; name: string } | null
+  creator?:    { id: string; name: string } | null
+}
+
+// Session retournée par /api/auth/me
+export interface AuthSession {
+  user: {
+    id:    string
+    name:  string
+    email: string
+    role:  Role | null
   }
 }

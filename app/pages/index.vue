@@ -1,24 +1,21 @@
 <script setup lang="ts">
 import { sub } from 'date-fns'
 import type { DropdownMenuItem } from '@nuxt/ui'
-import type { Period, Range } from '@/types'
+import auth from '~~/middleware/auth.global'
+definePageMeta({
+  layout: 'dashboard',
+  middleware: [auth] 
+})
+
 
 
 const items = [[{
-  label: 'New mail',
-  icon: 'i-lucide-send',
-  to: '/inbox'
-}, {
-  label: 'New customer',
-  icon: 'i-lucide-user-plus',
-  to: '/customers'
+  label: 'Créer une tâche',
+  icon: 'i-lucide-plus-square',
+  to: '/tasks/new'
 }]] satisfies DropdownMenuItem[][]
 
-const range = shallowRef<Range>({
-  start: sub(new Date(), { days: 14 }),
-  end: new Date()
-})
-const period = ref<Period>('daily')
+
 </script>
 
 <template>

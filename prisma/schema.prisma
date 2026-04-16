@@ -2,36 +2,105 @@ generator client {
   provider = "prisma-client-js"
 }
 
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-model User {
-  id         Int      @id @default(autoincrement())
-  name       String
-  email      String   @unique
-  password   String
-  role       String   @default("user") // "admin" ou "user"
-  createdAt  DateTime @default(now())
 
-  assignedTasks Task[] @relation("AssignedTasks")
-  createdTasks  Task[] @relation("CreatedTasks")
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  createdAt     DateTime  @default(now())
+  emailVerified Boolean   @default(false)
+  image         String?
+  roleId        Int?
+  updatedAt     DateTime  @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  assignedTasks Task[]    @relation("AssignedTasks")
+  createdTasks  Task[]    @relation("CreatedTasks")
+  role          Role?     @relation(fields: [roleId], references: [id])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  idToken               String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([identifier, value])
+}
+
+model Role {
+  id    Int    @id @default(autoincrement())
+  code  String @unique
+  label String
+  users User[]
+}
+
+model Status {
+  id    Int     @id @default(autoincrement())
+  color String?
+  code  String  @unique
+  label String
+  tasks Task[]
+}
+
+model Privilege {
+  id    Int     @id @default(autoincrement())
+  color String?
+  code  String  @unique
+  label String
+  tasks Task[]
 }
 
 model Task {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   title       String
   description String?
-  status      String   @default("todo")     // todo | inprogress | done
-  priority    String   @default("medium")   // low | medium | high
   dueDate     DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  assignedTo  Int?
-  createdBy   Int
-
-  assignee    User?  @relation("AssignedTasks", fields: [assignedTo], references: [id])
-  creator     User   @relation("CreatedTasks", fields: [createdBy], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdBy   String
+  assignedTo  String?
+  privilegeId Int
+  statusId    Int
+  assignee    User?     @relation("AssignedTasks", fields: [assignedTo], references: [id])
+  creator     User      @relation("CreatedTasks", fields: [createdBy], references: [id])
+  privilege   Privilege @relation(fields: [privilegeId], references: [id])
+  status      Status    @relation(fields: [statusId], references: [id])
 }

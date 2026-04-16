@@ -5,7 +5,7 @@
     @click="$emit('click', task)"
   >
     <div class="task-time" v-if="task.dueDate">
-      🕐 {{ formatTime(task.dueDate) }}
+      {{ formatTime(task.dueDate) }}
     </div>
     <div class="task-title">{{ task.title }}</div>
     <div class="task-status">

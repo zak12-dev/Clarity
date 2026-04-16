@@ -2,6 +2,10 @@
 import { computed, ref, watch } from 'vue'
 import { breakpointsTailwind, useBreakpoints } from '@vueuse/core'
 import type { Mail } from '~/types'
+definePageMeta({
+  layout: 'dashboard',
+})
+
 
 const tabItems = [{
   label: 'All',
