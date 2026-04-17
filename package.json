@@ -2,13 +2,13 @@
   "name": "Clarity",
   "type": "module",
   "private": true,
-  "scripts": {
-    "build": "nuxt build",
-    "dev": "nuxt dev",
-    "generate": "nuxt generate",
-    "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
-  },
+ "scripts": {
+  "build": "prisma generate && nuxt build",
+  "dev": "nuxt dev",
+  "generate": "nuxt generate",
+  "preview": "nuxt preview",
+  "postinstall": "prisma generate && nuxt prepare"
+},
   "dependencies": {
     "@iconify-json/carbon": "^1.2.20",
     "@nuxt/eslint": "1.15.2",

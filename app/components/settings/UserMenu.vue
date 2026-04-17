@@ -12,7 +12,7 @@ const logout = async () => {
       credentials: 'include',
     })
 
-    await navigateTo('auth/login')
+    await navigateTo('/auth/login')
   } catch (error) {
     console.error('Erreur logout:', error)
   }

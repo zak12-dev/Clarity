@@ -1,9 +1,7 @@
-import pkg from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 import { requireAuth } from "~~/server/utils/protect";
 
-const { PrismaClient } = pkg
-
-import { prisma } from '~~/server/utils/prisma'
+const prisma = new PrismaClient()
 
 export default defineEventHandler(async (event) => {
   const id = Number(getRouterParam(event, 'id'))
@@ -28,9 +26,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, message: 'Tâche introuvable' })
   }
 
-  // ── Vérifier que l'utilisateur est bien le CRÉATEUR ───
-  // Un utilisateur ne peut supprimer QUE les tâches qu'il a créées,
-  // pas celles qui lui sont simplement assignées.
+  
   if (task.createdBy !== currentUserId) {
     throw createError({
       statusCode: 403,

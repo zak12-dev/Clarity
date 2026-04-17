@@ -147,7 +147,6 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     await createUser(name, email, password, confirmPassword);
     toast.add({
       title: "Compte créé avec succès",
-      description: "Bienvenue sur WeLoveEvent !",
       color: "success",
     });
     await navigateTo("/auth/login");

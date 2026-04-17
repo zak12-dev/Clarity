@@ -103,7 +103,7 @@ const user = computed(() => session.value?.user ?? null)
   const logout = async () => {
     await authClient.signOut();
     session.value = null;
-    await navigateTo("/login");
+    await navigateTo("/auth/login");
   };
 
   /* =====================

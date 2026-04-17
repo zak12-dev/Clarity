@@ -1,9 +1,6 @@
-import pkg from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 
 import { prisma } from '~~/server/utils/prisma'
-
-const { PrismaClient } = pkg
-
 export default defineEventHandler(async (event) => {
   const id   = Number(getRouterParam(event, 'id'))
   const body = await readBody(event)
