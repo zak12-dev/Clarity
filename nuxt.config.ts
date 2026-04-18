@@ -47,8 +47,7 @@ export default defineNuxtConfig({
     turnstileSecret: process.env.TURNSTILE_SECRET_KEY,
 
     public: {
-      apiBase: "http://localhost:3000/",
-
+      apiBase: "https://clarity-rouge-two.vercel.app/",
       turnstileSiteKey: process.env.TURNSTILE_SITE_KEY,
     },
   },

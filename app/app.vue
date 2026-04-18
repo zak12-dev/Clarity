@@ -1,17 +1,12 @@
 <script setup lang="ts">
-
 import { useAuth } from '../composables/useAuth'
 
 const { fetchSession, session } = useAuth()
 
-onMounted(async () => {
-  await fetchSession()
-})
-
-watchEffect(() => {
-  console.log("SESSION =>", session.value)
-})
+// ✅ await au top-level — session chargée AVANT le rendu de l'arbre
+await fetchSession()
 </script>
+
 <template>
   <UApp>
     <NuxtLayout>

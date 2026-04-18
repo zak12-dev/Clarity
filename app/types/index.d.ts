@@ -27,7 +27,11 @@ export interface User {
   emailVerified: boolean
   image:         string | null
   roleId:        number | null
-  role?:         Role | null
+  role?: {
+    id: number
+    code: string
+    label: string
+  }
   createdAt:     string | Date
   updatedAt:     string | Date
 }

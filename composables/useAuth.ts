@@ -116,6 +116,7 @@ const user = computed(() => session.value?.user ?? null)
         credentials: "include",
       });
       session.value = data ?? null;
+      console.log("Session récupérée :", session.value);
     } catch {
       session.value = null;
     }

@@ -1,61 +1,44 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from "@nuxt/ui";
+import { useAuth } from "~~/composables/useAuth";
 
 const route = useRoute();
 const toast = useToast();
 
 const open = ref(false);
+const { user } = useAuth();
 
-const links = [
+const isAdmin = computed(() => {
+  return Number(user.value?.role?.id ?? 0) === 1;
+});
+const mainLinks = computed(() => links.value[0]);
+const links = computed(() => [
   [
     {
       label: "Tâches",
       icon: "i-lucide-check-square",
       to: "/",
-      onSelect: () => {
-        open.value = false;
-      },
+      onSelect: () => (open.value = false),
     },
     {
       label: "Créer une tâche",
       icon: "i-lucide-plus-square",
       to: "/tasks/new",
-      badge: "4",
-      onSelect: () => {
-        open.value = false;
-      },
+      onSelect: () => (open.value = false),
     },
-    {
-      label: "Utilisateurs",
-      icon: "i-lucide-users",
-      to: "/users",
-      onSelect: () => {
-        open.value = false;
-      },
-    },
-  ],
-  
-] satisfies NavigationMenuItem[][];
 
-const groups = computed(() => [
-  {
-    id: "links",
-    label: "Go to",
-    items: links.flat(),
-  },
-  {
-    id: "code",
-    label: "Code",
-    items: [
-      {
-        id: "source",
-        label: "View page source",
-        icon: "i-simple-icons-github",
-        to: `https://github.com/nuxt-ui-templates/dashboard/blob/main/app/pages${route.path === "/" ? "/index" : route.path}.vue`,
-        target: "_blank",
-      },
-    ],
-  },
+    // 🔥 visible seulement admin
+    ...(isAdmin.value
+      ? [
+          {
+            label: "Utilisateurs",
+            icon: "i-lucide-users",
+            to: "/users",
+            onSelect: () => (open.value = false),
+          },
+        ]
+      : []),
+  ],
 ]);
 
 onMounted(async () => {
@@ -110,7 +93,7 @@ onMounted(async () => {
 
         <UNavigationMenu
           :collapsed="collapsed"
-          :items="links[0]"
+          :items="mainLinks"
           orientation="vertical"
           tooltip
           popover
@@ -130,9 +113,8 @@ onMounted(async () => {
       </template>
     </UDashboardSidebar>
 
-    <UDashboardSearch :groups="groups" />
+    <UDashboardSearch />
 
     <slot />
-
   </UDashboardGroup>
 </template>
