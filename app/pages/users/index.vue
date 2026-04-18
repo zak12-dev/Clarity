@@ -3,18 +3,32 @@ import { getPaginationRowModel } from '@tanstack/table-core'
 import type { TableColumn } from '@nuxt/ui'
 import type { User, Role } from '~/types'
 import { h, ref, computed, watch } from 'vue'
+import { useAuth } from '~~/composables/useAuth'
 
 definePageMeta({ layout: 'dashboard' })
+
+const { user } = useAuth()
 
 const UAvatar       = resolveComponent('UAvatar')
 const UButton       = resolveComponent('UButton')
 const UBadge        = resolveComponent('UBadge')
 const UDropdownMenu = resolveComponent('UDropdownMenu')
 const UCheckbox     = resolveComponent('UCheckbox')
-const USelect       = resolveComponent('USelect')
 
 const toast = useToast()
 const table = ref()
+
+// ─── Hiérarchie (UX uniquement — sécurité gérée par l'API) ───────────────────
+const HIERARCHY: Record<string, number> = {
+  super_admin: 4,
+  admin:       3,
+  manager:     2,
+  user:        1,
+}
+
+const currentLevel = computed(() =>
+  HIERARCHY[user.value?.role?.code ?? ''] ?? 0
+)
 
 // ─── Fetch ────────────────────────────────────────────────────────────────────
 const { data, pending, refresh } = await useFetch<User[]>('/api/users', {
@@ -24,15 +38,31 @@ const { data: rolesData } = await useFetch<Role[]>('/api/roles', {
   default: () => [],
 })
 
-const roleItems = computed(() => [
-  { label: 'Aucun rôle', value: null },
-  ...(rolesData.value ?? []).map(r => ({ label: r.label, value: r.id, code: r.code })),
-])
+// Options filtrées : seulement les rôles strictement inférieurs au sien
+const roleItems = computed(() =>
+  (rolesData.value ?? [])
+    .filter(r => (HIERARCHY[r.code] ?? 0) < currentLevel.value)
+    .map(r => ({ label: r.label, value: r.id, code: r.code }))
+)
+
+// ─── Helpers UX (affichage uniquement) ───────────────────────────────────────
+const canModify = (target: User): boolean => {
+  if (!user.value) return false
+  if (user.value.id === target.id) return false
+  return currentLevel.value > (HIERARCHY[target.role?.code ?? ''] ?? 0)
+}
+
+const canDelete = (target: User): boolean => {
+  if (!user.value) return false
+  if (user.value.id === target.id) return false
+  return currentLevel.value > (HIERARCHY[target.role?.code ?? ''] ?? 0)
+}
 
 // ─── Changement de rôle ───────────────────────────────────────────────────────
 const roleLoading = ref<string | null>(null)
 
 async function updateRole(userId: string, userName: string, roleId: number | null) {
+  if (!roleId) return
   roleLoading.value = userId
   try {
     await $fetch(`/api/users/${userId}`, {
@@ -45,10 +75,10 @@ async function updateRole(userId: string, userName: string, roleId: number | nul
       color: 'success',
     })
     await refresh()
-  } catch {
+  } catch (e: any) {
     toast.add({
       title: 'Erreur',
-      description: 'Impossible de modifier le rôle.',
+      description: e?.data?.statusMessage ?? 'Impossible de modifier le rôle.',
       color: 'error',
     })
   } finally {
@@ -56,7 +86,9 @@ async function updateRole(userId: string, userName: string, roleId: number | nul
   }
 }
 
-// ─── Suppression ──────────────────────────────────────────────────────────────
+// ─── Suppression ─────────────────────────────────────────────────────────────
+// La sécurité est entièrement gérée par l'API DELETE
+// Le front ne fait que afficher l'erreur retournée
 const deleteLoading = ref<string | null>(null)
 
 async function deleteUser(id: string, name: string) {
@@ -64,12 +96,41 @@ async function deleteUser(id: string, name: string) {
   deleteLoading.value = id
   try {
     await $fetch(`/api/users/${id}`, { method: 'DELETE' })
-    toast.add({ title: 'Utilisateur supprimé', description: `${name} supprimé.`, color: 'success' })
+    toast.add({
+      title: 'Utilisateur supprimé',
+      description: `${name} a été supprimé.`,
+      color: 'success',
+    })
     await refresh()
-  } catch {
-    toast.add({ title: 'Erreur', description: "Impossible de supprimer l'utilisateur.", color: 'error' })
+  } catch (e: any) {
+    toast.add({
+      title: 'Impossible de supprimer',
+      description: e?.data?.statusMessage ?? 'Une erreur est survenue.',
+      color: 'error',
+    })
   } finally {
     deleteLoading.value = null
+  }
+}
+
+// Suppression en masse — on tente tout, l'API filtre côté serveur
+async function deleteBulk() {
+  const rows = table.value?.tableApi
+    ?.getFilteredSelectedRowModel().rows ?? []
+
+  if (!rows.length) return
+
+  const results = await Promise.allSettled(
+    rows.map((r: any) => deleteUser(r.original.id, r.original.name))
+  )
+
+  const failed = results.filter(r => r.status === 'rejected').length
+  if (failed > 0) {
+    toast.add({
+      title: `${failed} suppression(s) refusée(s)`,
+      description: 'Certains utilisateurs ne peuvent pas être supprimés.',
+      color: 'warning',
+    })
   }
 }
 
@@ -96,14 +157,20 @@ const roleOptions = computed(() => {
   ]
 })
 
-// ─── Couleur badge par code rôle ──────────────────────────────────────────────
-const roleColor = (code?: string | null) => {
-  const map: Record<string, string> = {
-    admin:   'primary',
-    manager: 'warning',
-    user:    'neutral',
-  }
-  return (code ? map[code] : null) ?? 'neutral'
+// ─── Styles couleur rôle ──────────────────────────────────────────────────────
+const COLOR_MAP: Record<string, { bg: string; text: string; border: string }> = {
+  super_admin: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
+  admin:       { bg: 'bg-primary-50', text: 'text-primary-700', border: 'border-primary-200' },
+  manager:     { bg: 'bg-amber-50',  text: 'text-amber-700',  border: 'border-amber-200'  },
+  user:        { bg: 'bg-gray-50',   text: 'text-gray-600',   border: 'border-gray-200'   },
+}
+const DEFAULT_STYLE = { bg: 'bg-gray-50', text: 'text-gray-400', border: 'border-gray-200' }
+
+const blockTitle = (target: User): string => {
+  if (user.value?.id === target.id) return 'Vous ne pouvez pas modifier votre propre rôle'
+  if (!canModify(target))           return 'Permissions insuffisantes'
+  if (roleItems.value.length === 0) return 'Aucun rôle disponible'
+  return ''
 }
 
 // ─── Colonnes ─────────────────────────────────────────────────────────────────
@@ -123,6 +190,7 @@ const columns: TableColumn<User>[] = [
         ariaLabel: 'Sélectionner',
       }),
   },
+
   {
     accessorKey: 'name',
     header: 'Utilisateur',
@@ -135,63 +203,87 @@ const columns: TableColumn<User>[] = [
         ]),
       ]),
   },
-  // Remplacez uniquement la colonne 'role' dans votre tableau columns[]
 
-{
-  accessorKey: 'role',
-  header: 'Rôle',
-  filterFn: (row, _id, filterValue) => row.original.role?.label === filterValue,
-  cell: ({ row }) => {
-    const user = row.original
-    const currentRoleId = user.role?.id ?? null
-    const isLoading = roleLoading.value === user.id
+  {
+    accessorKey: 'role',
+    header: 'Rôle',
+    filterFn: (row, _id, filterValue) => row.original.role?.label === filterValue,
+    cell: ({ row }) => {
+      const target        = row.original
+      const currentRoleId = target.role?.id ?? null
+      const isLoading     = roleLoading.value === target.id
+      const modifiable    = canModify(target) && roleItems.value.length > 0
+      const isDisabled    = isLoading || !modifiable
+      const style         = COLOR_MAP[target.role?.code ?? ''] ?? DEFAULT_STYLE
+      const tooltip       = blockTitle(target)
 
-    const colorMap: Record<string, { bg: string; text: string; border: string }> = {
-      admin:   { bg: 'bg-primary-50',  text: 'text-primary-700',  border: 'border-primary-200'  },
-      manager: { bg: 'bg-amber-50',    text: 'text-amber-700',    border: 'border-amber-200'    },
-      user:    { bg: 'bg-gray-50',     text: 'text-gray-600',     border: 'border-gray-200'     },
-    }
-    const style = colorMap[user.role?.code ?? ''] ?? { bg: 'bg-gray-50', text: 'text-gray-400', border: 'border-gray-200' }
-
-    return h('div', { class: 'flex items-center gap-2' }, [
-      h('select', {
-        value: currentRoleId ?? '',
-        disabled: isLoading,
-        class: [
-          'appearance-none rounded-md px-2.5 py-1 text-xs font-semibold border cursor-pointer outline-none',
-          'transition-colors duration-150 focus:ring-2 focus:ring-offset-1 focus:ring-primary-300',
-          style.bg, style.text, style.border,
-          isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80',
-        ].join(' '),
-        onChange: (e: Event) => {
-          const raw = (e.target as HTMLSelectElement).value
-          const newRoleId = raw === '' ? null : Number(raw)
-          if (newRoleId !== currentRoleId) {
-            updateRole(user.id, user.name, newRoleId)
-          }
-        },
-      },
-        roleItems.value.map(item =>
-          h('option', {
-            value: item.value ?? '',
-            selected: (item.value ?? null) === currentRoleId,
-          }, item.label)
-        )
-      ),
-
-      // Spinner
-      isLoading
-        ? h('svg', {
-            class: 'w-3.5 h-3.5 animate-spin text-primary-500 shrink-0',
-            fill: 'none', viewBox: '0 0 24 24',
+      return h('div', { class: 'flex items-center gap-2' }, [
+        h('div', { class: 'relative', title: tooltip }, [
+          h('select', {
+            value:    currentRoleId ?? '',
+            disabled: isDisabled,
+            class: [
+              'appearance-none rounded-md px-2.5 py-1 text-xs font-semibold border outline-none transition-colors duration-150',
+              style.bg, style.text, style.border,
+              isDisabled
+                ? 'opacity-60 cursor-not-allowed'
+                : 'cursor-pointer hover:opacity-80 focus:ring-2 focus:ring-offset-1 focus:ring-primary-300',
+              !modifiable ? 'pr-6' : '',
+            ].join(' '),
+            onChange: (e: Event) => {
+              const raw       = (e.target as HTMLSelectElement).value
+              const newRoleId = raw === '' ? null : Number(raw)
+              if (newRoleId !== currentRoleId) {
+                updateRole(target.id, target.name, newRoleId)
+              }
+            },
           }, [
-            h('circle', { class: 'opacity-25', cx: 12, cy: 12, r: 10, stroke: 'currentColor', 'stroke-width': 4 }),
-            h('path', { class: 'opacity-75', fill: 'currentColor', d: 'M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z' }),
-          ])
-        : null,
-    ])
+            // Option courante (toujours visible, désactivée si on peut changer)
+            h('option', {
+              value:    currentRoleId ?? '',
+              disabled: modifiable,
+              hidden:   modifiable,
+            }, target.role?.label ?? 'Aucun rôle'),
+
+            // Options disponibles
+            ...roleItems.value.map(item =>
+              h('option', {
+                value:    item.value ?? '',
+                selected: item.value === currentRoleId,
+              }, item.label)
+            ),
+          ]),
+
+          // Icône cadenas si non modifiable
+          !modifiable
+            ? h('span', {
+                class: 'pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-300',
+              },
+                h('svg', {
+                  width: 10, height: 10, viewBox: '0 0 24 24',
+                  fill: 'none', stroke: 'currentColor', 'stroke-width': 2,
+                }, [
+                  h('rect', { x: 3, y: 11, width: 18, height: 11, rx: 2 }),
+                  h('path', { d: 'M7 11V7a5 5 0 0 1 10 0v4' }),
+                ])
+              )
+            : null,
+        ]),
+
+        // Spinner chargement rôle
+        isLoading
+          ? h('svg', {
+              class: 'w-3.5 h-3.5 animate-spin text-primary-500 shrink-0',
+              fill: 'none', viewBox: '0 0 24 24',
+            }, [
+              h('circle', { class: 'opacity-25', cx: 12, cy: 12, r: 10, stroke: 'currentColor', 'stroke-width': 4 }),
+              h('path', { class: 'opacity-75', fill: 'currentColor', d: 'M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z' }),
+            ])
+          : null,
+      ])
+    },
   },
-},
+
   {
     accessorKey: 'emailVerified',
     header: 'Email vérifié',
@@ -201,6 +293,7 @@ const columns: TableColumn<User>[] = [
         color: row.original.emailVerified ? 'success' : 'warning',
       }, () => row.original.emailVerified ? 'Vérifié' : 'Non vérifié'),
   },
+
   {
     accessorKey: 'createdAt',
     header: 'Créé le',
@@ -209,20 +302,34 @@ const columns: TableColumn<User>[] = [
         day: '2-digit', month: 'short', year: 'numeric',
       }),
   },
+
   {
     id: 'actions',
-    cell: ({ row }) =>
-      h('div', { class: 'flex justify-end' },
+    cell: ({ row }) => {
+      const target    = row.original
+      const deletable = canDelete(target)
+      const isLoading = deleteLoading.value === target.id
+
+      return h('div', { class: 'flex justify-end' },
         h(UButton, {
-          icon: 'i-lucide-trash',
-          color: 'error',
-          variant: 'ghost',
-          size: 'sm',
-          loading: deleteLoading.value === row.original.id,
+          icon:      'i-lucide-trash',
+          color:     'error',
+          variant:   'ghost',
+          size:      'sm',
+          loading:   isLoading,
+          // Désactivé visuellement (UX) — l'API bloque de toute façon
+          disabled:  !deletable || isLoading,
+          title:     !deletable
+            ? user.value?.id === target.id
+              ? 'Vous ne pouvez pas vous supprimer'
+              : 'Permissions insuffisantes'
+            : 'Supprimer',
           ariaLabel: 'Supprimer',
-          onClick: () => deleteUser(row.original.id, row.original.name),
+          class:     !deletable ? 'opacity-30 cursor-not-allowed' : '',
+          onClick:   () => deleteUser(target.id, target.name),
         })
-      ),
+      )
+    },
   },
 ]
 </script>
@@ -248,6 +355,7 @@ const columns: TableColumn<User>[] = [
         />
 
         <div class="flex flex-wrap items-center gap-2">
+
           <!-- Suppression en masse -->
           <UButton
             v-if="table?.tableApi?.getFilteredSelectedRowModel().rows.length"
@@ -256,11 +364,7 @@ const columns: TableColumn<User>[] = [
             variant="subtle"
             icon="i-lucide-trash"
             :loading="deleteLoading !== null"
-            @click="Promise.all(
-              table.tableApi
-                .getFilteredSelectedRowModel()
-                .rows.map((r: any) => deleteUser(r.original.id, r.original.name))
-            )"
+            @click="deleteBulk"
           >
             <template #trailing>
               <UKbd>{{ table?.tableApi?.getFilteredSelectedRowModel().rows.length }}</UKbd>

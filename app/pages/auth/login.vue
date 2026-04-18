@@ -555,7 +555,7 @@ onMounted(() => {
 }
 .signup-link {
   font-weight: 700;
-  color: green;
+  color: var(--primary);
   text-decoration: none;
   margin-left: 4px;
 }

@@ -5,6 +5,11 @@ export default defineNuxtConfig({
 
   css: ["~/assets/css/main.css"],
 
+   ui: {
+    primary: 'primary',
+    gray: 'slate'
+  },
+
   components: [
     {
       path: "~/components",
@@ -47,7 +52,8 @@ export default defineNuxtConfig({
     turnstileSecret: process.env.TURNSTILE_SECRET_KEY,
 
     public: {
-      apiBase: "https://clarity-rouge-two.vercel.app/",
+      apiBase: "http://localhost:3000/",
+
       turnstileSiteKey: process.env.TURNSTILE_SITE_KEY,
     },
   },

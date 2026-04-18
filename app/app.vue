@@ -8,7 +8,7 @@ await fetchSession()
 </script>
 
 <template>
-  <UApp>
+  <UApp class="font-sans">
     <NuxtLayout>
       <NuxtRouteAnnouncer />
       <NuxtLoadingIndicator />

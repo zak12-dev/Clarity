@@ -8,9 +8,9 @@ const toast = useToast();
 const open = ref(false);
 const { user } = useAuth();
 
-const isAdmin = computed(() => {
-  return Number(user.value?.role?.id ?? 0) === 1;
-});
+const isAdmin = computed(() =>
+  ['super_admin', 'admin'].includes(user.value?.role?.code ?? '')
+)
 const mainLinks = computed(() => links.value[0]);
 const links = computed(() => [
   [
@@ -72,7 +72,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <UDashboardGroup unit="rem">
+  <UDashboardGroup unit="rem" >
     <UDashboardSidebar
       id="default"
       v-model:open="open"

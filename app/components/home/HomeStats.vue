@@ -190,7 +190,7 @@ const formatDate         = (d: string | Date) => format(new Date(d), 'dd MMM yyy
 <style scoped>
 /* ── Layout ── */
 .dashboard-body {
-  padding: 16px;
+  padding: 1px;
   display: flex;
   flex-direction: column;
   gap: 20px;

@@ -95,12 +95,12 @@ model Task {
   dueDate     DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  createdBy   String
+createdBy String?
   assignedTo  String?
   privilegeId Int
   statusId    Int
   assignee    User?     @relation("AssignedTasks", fields: [assignedTo], references: [id])
-  creator     User      @relation("CreatedTasks", fields: [createdBy], references: [id])
+creator   User? @relation("CreatedTasks", fields: [createdBy], references: [id])
   privilege   Privilege @relation(fields: [privilegeId], references: [id])
   status      Status    @relation(fields: [statusId], references: [id])
 }

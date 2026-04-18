@@ -1,17 +1,25 @@
 import type { HeadersInit } from 'undici'
+
 export default defineEventHandler(async (event) => {
-const session = await auth.api.getSession({
-  headers: new Headers(event.node.req.headers as HeadersInit)
-})
+  const session = await auth.api.getSession({
+    headers: new Headers(event.node.req.headers as HeadersInit)
+  })
+
   if (!session?.user) {
-    throw createError({ statusCode: 401, message: 'Non authentifié' })
+    throw createError({
+      statusCode: 401,
+      message: 'Non authentifié'
+    })
   }
 
   const id = Number(getRouterParam(event, 'id'))
   const body = await readBody(event)
 
   if (!id || isNaN(id)) {
-    throw createError({ statusCode: 400, message: 'ID invalide' })
+    throw createError({
+      statusCode: 400,
+      message: 'ID invalide'
+    })
   }
 
   // ── NORMALISATION (IMPORTANT) ─────────────────────
@@ -29,23 +37,22 @@ const session = await auth.api.getSession({
   console.log('statusId:', statusId, 'privilegeId:', privilegeId)
 
   // ── VALIDATION ────────────────────────────────────
-  const existing = await prisma.task.findUnique({ where: { id } })
-
-  if (!existing) {
-    throw createError({ statusCode: 404, message: 'Tâche introuvable' })
-  }
-
-  const currentUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    include: { role: true }
+  const existing = await prisma.task.findUnique({
+    where: { id }
   })
 
-  const isAdmin = currentUser?.role?.code === 'admin'
+  if (!existing) {
+    throw createError({
+      statusCode: 404,
+      message: 'Tâche introuvable'
+    })
+  }
 
-  if (!isAdmin && existing.createdBy !== session.user.id) {
+  // ── Vérification créateur ─────────────────────────
+  if (existing.createdBy !== session.user.id) {
     throw createError({
       statusCode: 403,
-      message: 'Vous ne pouvez modifier que vos propres tâches'
+      message: 'Vous ne pouvez modifier que les tâches que vous avez créées'
     })
   }
 
@@ -64,8 +71,18 @@ const session = await auth.api.getSession({
     include: {
       status: true,
       privilege: true,
-      assignee: { select: { id: true, name: true } },
-      creator: { select: { id: true, name: true } },
+      assignee: {
+        select: {
+          id: true,
+          name: true
+        }
+      },
+      creator: {
+        select: {
+          id: true,
+          name: true
+        }
+      },
     }
   })
 

@@ -5,52 +5,23 @@ import { useAuth } from "~~/composables/useAuth";
 defineProps<{
   collapsed?: boolean;
 }>();
-const logout = async () => {
-  try {
-    await $fetch('/api/auth/sign-out', {
-      method: 'POST',
-      credentials: 'include',
-    })
 
-    await navigateTo('/auth/login')
-  } catch (error) {
-    console.error('Erreur logout:', error)
-  }
-}
 const colorMode = useColorMode();
 const appConfig = useAppConfig();
 
-const colors = [
-  "red",
-  "orange",
-  "amber",
-  "yellow",
-  "lime",
-  "green",
-  "emerald",
-  "teal",
-  "cyan",
-  "sky",
-  "blue",
-  "indigo",
-  "violet",
-  "purple",
-  "fuchsia",
-  "pink",
-  "rose",
-];
-const neutrals = ["slate", "gray", "zinc", "neutral", "stone"];
+// ✅ logout vient directement du composable
+const { user, logout } = useAuth();
 
-const { user } = useAuth();
+const colors = ["red","orange","amber","yellow","lime","green","emerald","teal","cyan","sky","blue","indigo","violet","purple","fuchsia","pink","rose"];
+const neutrals = ["slate","gray","zinc","neutral","stone"];
+
 const items = computed<DropdownMenuItem[][]>(() => [
   [
     {
       type: "label",
       label: user.value?.name ?? "Utilisateur",
       avatar: {
-        src:
-          user.value?.image ??
-          "https://ui-avatars.com/api/?name=" + (user.value?.name ?? "User"),
+        src: user.value?.image ?? "https://ui-avatars.com/api/?name=" + (user.value?.name ?? "User"),
         alt: user.value?.name ?? "User",
       },
     },
@@ -64,19 +35,15 @@ const items = computed<DropdownMenuItem[][]>(() => [
           label: "Primary",
           slot: "chip",
           chip: appConfig.ui.colors.primary,
-          content: {
-            align: "center",
-            collisionPadding: 16,
-          },
+          content: { align: "center", collisionPadding: 16 },
           children: colors.map((color) => ({
             label: color,
             chip: color,
             slot: "chip",
             checked: appConfig.ui.colors.primary === color,
             type: "checkbox",
-            onSelect: (e) => {
+            onSelect: (e: Event) => {
               e.preventDefault();
-
               appConfig.ui.colors.primary = color;
             },
           })),
@@ -84,23 +51,16 @@ const items = computed<DropdownMenuItem[][]>(() => [
         {
           label: "Neutral",
           slot: "chip",
-          chip:
-            appConfig.ui.colors.neutral === "neutral"
-              ? "old-neutral"
-              : appConfig.ui.colors.neutral,
-          content: {
-            align: "end",
-            collisionPadding: 16,
-          },
+          chip: appConfig.ui.colors.neutral === "neutral" ? "old-neutral" : appConfig.ui.colors.neutral,
+          content: { align: "end", collisionPadding: 16 },
           children: neutrals.map((color) => ({
             label: color,
             chip: color === "neutral" ? "old-neutral" : color,
             slot: "chip",
             type: "checkbox",
             checked: appConfig.ui.colors.neutral === color,
-            onSelect: (e) => {
+            onSelect: (e: Event) => {
               e.preventDefault();
-
               appConfig.ui.colors.neutral = color;
             },
           })),
@@ -118,7 +78,6 @@ const items = computed<DropdownMenuItem[][]>(() => [
           checked: colorMode.value === "light",
           onSelect(e: Event) {
             e.preventDefault();
-
             colorMode.preference = "light";
           },
         },
@@ -128,9 +87,7 @@ const items = computed<DropdownMenuItem[][]>(() => [
           type: "checkbox",
           checked: colorMode.value === "dark",
           onUpdateChecked(checked: boolean) {
-            if (checked) {
-              colorMode.preference = "dark";
-            }
+            if (checked) colorMode.preference = "dark";
           },
           onSelect(e: Event) {
             e.preventDefault();
@@ -140,15 +97,16 @@ const items = computed<DropdownMenuItem[][]>(() => [
     },
   ],
   [
-  {
-    label: "Log out",
-    icon: "i-lucide-log-out",
-    onSelect: async (e: Event) => {
-      e.preventDefault()
-      await logout()
+    {
+      label: "Se déconnecter",
+      icon: "i-lucide-log-out",
+      // ✅ logout() du composable : signOut + session = null + redirect /login
+      onSelect: async (e: Event) => {
+        e.preventDefault();
+        await logout();
+      },
     },
-  },
-],
+  ],
 ]);
 </script>
 
@@ -156,9 +114,7 @@ const items = computed<DropdownMenuItem[][]>(() => [
   <UDropdownMenu
     :items="items"
     :content="{ align: 'center', collisionPadding: 12 }"
-    :ui="{
-      content: collapsed ? 'w-48' : 'w-(--reka-dropdown-menu-trigger-width)',
-    }"
+    :ui="{ content: collapsed ? 'w-48' : 'w-(--reka-dropdown-menu-trigger-width)' }"
   >
     <UButton
       v-bind="{
@@ -170,9 +126,7 @@ const items = computed<DropdownMenuItem[][]>(() => [
       block
       :square="collapsed"
       class="data-[state=open]:bg-elevated"
-      :ui="{
-        trailingIcon: 'text-dimmed',
-      }"
+      :ui="{ trailingIcon: 'text-dimmed' }"
     />
 
     <template #chip-leading="{ item }">

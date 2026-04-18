@@ -38,8 +38,7 @@ const items = [[{
 
     <template #body>
       <HomeStats />
-      <HomeChart />
-      <HomeSales />
+    
     </template>
   </UDashboardPanel>
 </template>
